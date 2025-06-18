@@ -14,20 +14,20 @@ N0=$(docker exec n0 ip addr show dev eth0 | egrep -o "inet [^/]+" | cut -d" " -f
 N1=$(docker exec n1 ip addr show dev eth0 | egrep -o "inet [^/]+" | cut -d" " -f2)
 N2=$(docker exec n2 ip addr show dev eth0 | egrep -o "inet [^/]+" | cut -d" " -f2)
 N3=$(docker exec n3 ip addr show dev eth0 | egrep -o "inet [^/]+" | cut -d" " -f2)
-docker exec -it n1 ip link add n1-eth0 type vxlan id 1 remote $N2 dstport 8472 nolearning
-docker exec -it n2 ip link add n2-eth0 type vxlan id 1 remote $N1 dstport 8472 nolearning
-docker exec -it n2 ip link add n2-eth1 type vxlan id 2 remote $N3 dstport 8472 nolearning
-docker exec -it n3 ip link add n3-eth0 type vxlan id 2 remote $N2 dstport 8472 nolearning
-docker exec -it n1 ip link set up n1-eth0
-docker exec -it n2 ip link set up n2-eth0
-docker exec -it n2 ip link set up n2-eth1
-docker exec -it n3 ip link set up n3-eth0
-docker exec -it n1 ip addr add 10.0.1.1/30 dev n1-eth0
-docker exec -it n2 ip addr add 10.0.1.2/30 dev n2-eth0
-docker exec -it n2 ip addr add 10.0.1.5/30 dev n2-eth1
-docker exec -it n3 ip addr add 10.0.1.6/30 dev n3-eth0
-docker exec -it n1 ip route add 10.0.1.4/30 via 10.0.1.2
-docker exec -it n3 ip route add 10.0.1.0/30 via 10.0.1.5
+docker exec -it n1 sudo ip link add n1-eth0 type vxlan id 1 remote $N2 dstport 8472 nolearning
+docker exec -it n2 sudo ip link add n2-eth0 type vxlan id 1 remote $N1 dstport 8472 nolearning
+docker exec -it n2 sudo ip link add n2-eth1 type vxlan id 2 remote $N3 dstport 8472 nolearning
+docker exec -it n3 sudo ip link add n3-eth0 type vxlan id 2 remote $N2 dstport 8472 nolearning
+docker exec -it n1 sudo ip link set up n1-eth0
+docker exec -it n2 sudo ip link set up n2-eth0
+docker exec -it n2 sudo ip link set up n2-eth1
+docker exec -it n3 sudo ip link set up n3-eth0
+docker exec -it n1 sudo ip addr add 10.0.1.1/30 dev n1-eth0
+docker exec -it n2 sudo ip addr add 10.0.1.2/30 dev n2-eth0
+docker exec -it n2 sudo ip addr add 10.0.1.5/30 dev n2-eth1
+docker exec -it n3 sudo ip addr add 10.0.1.6/30 dev n3-eth0
+docker exec -it n1 sudo ip route add 10.0.1.4/30 via 10.0.1.2
+docker exec -it n3 sudo ip route add 10.0.1.0/30 via 10.0.1.5
 docker exec -it n1 ping -c4 10.0.1.2
 docker exec -it n1 ping -c4 10.0.1.5
 docker exec -it n1 ping -c4 10.0.1.6
@@ -41,8 +41,8 @@ NEIGHBORS["n2"]="n1/$N1/10 n3/$N3/10"
 NEIGHBORS["n3"]="n2/$N2/10"
 
 docker exec n0 bash -c "ndn-cert-mgr.py >/tmp/ndn-cert-mgr.log 2>&1 & true"
-for node in n1 n2 n3; do docker exec $node start-nfd.sh $node; done
-for node in n1 n2 n3; do docker exec $node start-nlsr.sh $node http://$N0:3000 ${NEIGHBORS[$node]}; done
+for node in n1 n2 n3; do docker exec $node sudo start-nfd.sh $node; done
+for node in n1 n2 n3; do docker exec $node sudo start-nlsr.sh $node http://$N0:3000 ${NEIGHBORS[$node]}; done
 ```
 
 3. Then we recommend wait a few seconds for routing convergency (i.e, all routers exchange reachability information and synchronize their database). Convergency time on NLSR is a little bit higher than NDVR:

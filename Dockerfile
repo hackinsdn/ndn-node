@@ -55,5 +55,4 @@ RUN --mount=source=./patches,target=/mnt,type=bind \
 
 COPY files/ /
 
-USER ndn
 WORKDIR /home/ndn

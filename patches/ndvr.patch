@@ -1,0 +1,348 @@
+diff --git a/.waf-tools/default-compiler-flags.py b/.waf-tools/default-compiler-flags.py
+index d91a0cd..87a297f 100644
+--- a/.waf-tools/default-compiler-flags.py
++++ b/.waf-tools/default-compiler-flags.py
+@@ -128,7 +128,7 @@ class GccBasicFlags(CompilerFlags):
+     """
+     def getGeneralFlags(self, conf):
+         flags = super(GccBasicFlags, self).getGeneralFlags(conf)
+-        flags['CXXFLAGS'] += ['-std=c++14']
++        flags['CXXFLAGS'] += ['-std=c++17']
+         if Utils.unversioned_sys_platform() == 'linux':
+             flags['LINKFLAGS'] += ['-fuse-ld=gold']
+         elif Utils.unversioned_sys_platform() == 'freebsd':
+diff --git a/extensions/ndvr-security-helper.hpp b/extensions/ndvr-security-helper.hpp
+index 477b5e1..211f826 100644
+--- a/extensions/ndvr-security-helper.hpp
++++ b/extensions/ndvr-security-helper.hpp
+@@ -23,7 +23,7 @@ setupRootCert(const ndn::Name& subjectName, std::string filename) {
+   if (filename.empty())
+     return;
+ 
+-  ndn::security::v2::Certificate cert = subjectId.getDefaultKey().getDefaultCertificate();
++  ndn::security::Certificate cert = subjectId.getDefaultKey().getDefaultCertificate();
+   std::ofstream os(filename);
+   io::save(cert, filename);
+ }
+@@ -44,8 +44,8 @@ setupSigningInfo(const ndn::Name subjectName, const ndn::Name issuerName) {
+   catch (const std::exception& e) {
+   }
+   ndn::security::Identity subjectId = keyChain.createIdentity(subjectName);
+-  ndn::security::v2::Certificate certReq = subjectId.getDefaultKey().getDefaultCertificate();
+-  ndn::security::v2::Certificate cert;
++  ndn::security::Certificate certReq = subjectId.getDefaultKey().getDefaultCertificate();
++  ndn::security::Certificate cert;
+ 
+   ndn::Name certificateName = certReq.getKeyName();
+   certificateName.append("NA");
+diff --git a/extensions/ndvr.cpp b/extensions/ndvr.cpp
+index 175cf50..af2d96f 100644
+--- a/extensions/ndvr.cpp
++++ b/extensions/ndvr.cpp
+@@ -588,7 +588,7 @@ void Ndvr::OnKeyInterest(const ndn::Interest& interest) {
+ 
+   try {
+     // Create Data packet
+-    ndn::security::v2::Certificate cert = m_keyChain.getPib().getIdentity(identityName).getDefaultKey().getDefaultCertificate();
++    ndn::security::Certificate cert = m_keyChain.getPib().getIdentity(identityName).getDefaultKey().getDefaultCertificate();
+ 
+     // Return Data packet to the requester
+     m_face.put(cert);
+@@ -697,7 +697,7 @@ void Ndvr::OnValidatedDvInfo(const ndn::Data& data) {
+   //NS_LOG_INFO("Done");
+ }
+ 
+-void Ndvr::OnDvInfoValidationFailed(const ndn::Data& data, const ndn::security::v2::ValidationError& ve) {
++void Ndvr::OnDvInfoValidationFailed(const ndn::Data& data, const ndn::security::ValidationError& ve) {
+   NS_LOG_DEBUG("Not validated data: " << data.getName() << ". The failure info: " << ve);
+ }
+ 
+diff --git a/extensions/ndvr.hpp b/extensions/ndvr.hpp
+index 3cb7c36..bb497c4 100644
+--- a/extensions/ndvr.hpp
++++ b/extensions/ndvr.hpp
+@@ -139,7 +139,7 @@ private:
+   void SchedDvInfoInterest(NeighborEntry& neighbor, bool wait = false, uint32_t retx = 0);
+   void SendDvInfoInterest(const std::string& neighbor_name, uint32_t retx = 0);
+   void OnValidatedDvInfo(const ndn::Data& data);
+-  void OnDvInfoValidationFailed(const ndn::Data& data, const ndn::security::v2::ValidationError& ve);
++  void OnDvInfoValidationFailed(const ndn::Data& data, const ndn::security::ValidationError& ve);
+   void SendHelloInterest();
+   void registerPrefixes();
+   void registerNeighborPrefix(NeighborEntry& neighbor, uint64_t oldFaceId, uint64_t newFaceId);
+diff --git a/minindn/adjustments-nlsr.patch b/minindn/adjustments-nlsr.patch
+index 4900d35..3e113a8 100644
+--- a/minindn/adjustments-nlsr.patch
++++ b/minindn/adjustments-nlsr.patch
+@@ -1,5 +1,17 @@
++diff --git a/src/conf-file-processor.hpp b/src/conf-file-processor.hpp
++index 735a0c1..6541f74 100644
++--- a/src/conf-file-processor.hpp
+++++ b/src/conf-file-processor.hpp
++@@ -27,6 +27,7 @@
++ 
++ #include <boost/algorithm/string.hpp>
++ #include <boost/property_tree/ptree.hpp>
+++#include <boost/asio/io_service.hpp>
++ 
++ namespace nlsr {
++ 
+ diff --git a/src/conf-parameter.hpp b/src/conf-parameter.hpp
+-index 57dd2c2..ded330e 100644
++index 687aa1c..d4babfb 100644
+ --- a/src/conf-parameter.hpp
+ +++ b/src/conf-parameter.hpp
+ @@ -54,7 +54,7 @@ enum {
+diff --git a/minindn/ndn-tools-22.12-ndn-ping-variable-bit-rate.patch b/minindn/ndn-tools-22.12-ndn-ping-variable-bit-rate.patch
+new file mode 100644
+index 0000000..a69b952
+--- /dev/null
++++ b/minindn/ndn-tools-22.12-ndn-ping-variable-bit-rate.patch
+@@ -0,0 +1,212 @@
++diff --git a/tools/dump/ndndump.cpp b/tools/dump/ndndump.cpp
++index 4b28c63..7e6dcfb 100644
++--- a/tools/dump/ndndump.cpp
+++++ b/tools/dump/ndndump.cpp
++@@ -33,6 +33,7 @@
++ 
++ #include <ndn-cxx/lp/nack.hpp>
++ #include <ndn-cxx/lp/packet.hpp>
+++#include <ndn-cxx/lp/fields.hpp>
++ #include <ndn-cxx/net/ethernet.hpp>
++ #include <ndn-cxx/util/scope.hpp>
++ #include <ndn-cxx/util/string-helper.hpp>
++diff --git a/tools/ping/client/main.cpp b/tools/ping/client/main.cpp
++index a37a461..f8675fe 100644
++--- a/tools/ping/client/main.cpp
+++++ b/tools/ping/client/main.cpp
++@@ -136,9 +136,12 @@ main(int argc, char* argv[])
++   options.startSeq = 0;
++   options.shouldGenerateRandomSeq = true;
++   options.shouldPrintTimestamp = false;
+++  options.mPoissonInterval = -1;
++ 
++   std::string identifier;
++ 
+++  int mPoissonInterval;
+++
++   namespace po = boost::program_options;
++ 
++   po::options_description visibleOptDesc("Options");
++@@ -156,6 +159,7 @@ main(int argc, char* argv[])
++                      "add identifier to the Interest names before the sequence numbers to avoid conflicts")
++     ("cache,a",     "allow routers to return stale Data from cache")
++     ("timestamp,t", "print timestamp with messages")
+++    ("poisson-interval,P", po::value<int>(&mPoissonInterval), "Poisson distribution based random interval (mean)")
++   ;
++ 
++   po::options_description hiddenOptDesc;
++@@ -227,6 +231,15 @@ main(int argc, char* argv[])
++     if (optVm.count("timestamp") > 0) {
++       options.shouldPrintTimestamp = true;
++     }
+++
+++    if (optVm.count("poisson-interval") > 0) {
+++      if (mPoissonInterval < 0) {
+++        std::cerr << "ERROR: mean Poisson distribution must be positive" << std::endl;
+++        usage(visibleOptDesc);
+++      }
+++
+++      options.mPoissonInterval = mPoissonInterval;
+++    }
++   }
++   catch (const po::error& e) {
++     std::cerr << "ERROR: " << e.what() << "\n";
++diff --git a/tools/ping/client/ping.cpp b/tools/ping/client/ping.cpp
++index 5ce8765..aaa5f96 100644
++--- a/tools/ping/client/ping.cpp
+++++ b/tools/ping/client/ping.cpp
++@@ -70,7 +70,7 @@ Ping::performPing()
++   ++m_nOutstanding;
++ 
++   if ((m_options.nPings < 0) || (m_nSent < m_options.nPings)) {
++-    m_nextPingEvent = m_scheduler.schedule(m_options.interval, [this] { performPing(); });
+++    m_nextPingEvent = m_scheduler.schedule(calculateInterval(), [this] { performPing(); });
++   }
++   else {
++     finish();
++@@ -121,4 +121,13 @@ Ping::makePingName(uint64_t seq) const
++   return name;
++ }
++ 
+++time::milliseconds
+++Ping::calculateInterval() {
+++  if (m_options.mPoissonInterval > 0) {
+++    std::poisson_distribution<int> distribution(m_options.mPoissonInterval);
+++    return time::milliseconds(distribution(random::getRandomNumberEngine()));
+++  }
+++  return m_options.interval;
+++}
+++
++ } // namespace ndn::ping::client
++diff --git a/tools/ping/client/ping.hpp b/tools/ping/client/ping.hpp
++index f78d761..ec7a991 100644
++--- a/tools/ping/client/ping.hpp
+++++ b/tools/ping/client/ping.hpp
++@@ -46,6 +46,7 @@ struct Options
++   time::milliseconds timeout;       //!< timeout threshold
++   uint64_t startSeq;                //!< start ping sequence number
++   name::Component clientIdentifier; //!< client identifier
+++  int mPoissonInterval;             //!< poisson distribution based random interval (mean)
++ };
++ 
++ /**
++@@ -110,6 +111,12 @@ private:
++   Name
++   makePingName(uint64_t seq) const;
++ 
+++  /**
+++   * @brief Calculate the inter-departure ping interval (constant or random)
+++   */
+++  time::milliseconds
+++  calculateInterval();
+++
++   /**
++    * @brief Performs individual ping
++    */
++diff --git a/tools/ping/server/main.cpp b/tools/ping/server/main.cpp
++index bf050da..3bec85c 100644
++--- a/tools/ping/server/main.cpp
+++++ b/tools/ping/server/main.cpp
++@@ -104,6 +104,7 @@ main(int argc, char* argv[])
++   std::string prefix;
++   auto nMaxPings = static_cast<std::make_signed_t<size_t>>(options.nMaxPings);
++   auto payloadSize = static_cast<std::make_signed_t<size_t>>(options.payloadSize);
+++  std::string sizeUniformDist;
++ 
++   po::options_description visibleDesc("Options");
++   visibleDesc.add_options()
++@@ -116,6 +117,7 @@ main(int argc, char* argv[])
++                     "size of response payload")
++     ("timestamp,t", po::bool_switch(&options.wantTimestamp),
++                     "prepend a timestamp to each log message")
+++    ("udist-size,U", po::value<std::string>(&sizeUniformDist), "Uniform distribution for packet size (min,max)")
++     ("quiet,q",     po::bool_switch(&options.wantQuiet),
++                     "do not print a log message each time a ping packet is received")
++     ("version,V",   "print program version and exit")
++@@ -182,6 +184,16 @@ main(int argc, char* argv[])
++   }
++   options.payloadSize = static_cast<size_t>(payloadSize);
++ 
+++  if (vm.count("udist-size") > 0) {
+++    try {
+++      options.minPktSizeUniDis = stoi(sizeUniformDist);
+++      options.maxPktSizeUniDis = stoi(sizeUniformDist.substr(sizeUniformDist.find(",")+1));
+++    } catch (...) {
+++      std::cerr << "ERROR: udist-size requires two values comma-separated: min_pkt_size,max_pkt_size" << std::endl;
+++      return 2;
+++    }
+++  }
+++
++   return Runner(options).run();
++ }
++ 
++diff --git a/tools/ping/server/ping-server.cpp b/tools/ping/server/ping-server.cpp
++index 69093d3..cb1dd61 100644
++--- a/tools/ping/server/ping-server.cpp
+++++ b/tools/ping/server/ping-server.cpp
++@@ -23,6 +23,7 @@
++ #include "ping-server.hpp"
++ 
++ #include <ndn-cxx/security/signing-helpers.hpp>
+++#include <ndn-cxx/util/random.hpp>
++ 
++ namespace ndn::ping::server {
++ 
++@@ -65,7 +66,15 @@ PingServer::onInterest(const Interest& interest)
++ 
++   auto data = make_shared<Data>(interest.getName());
++   data->setFreshnessPeriod(m_options.freshnessPeriod);
++-  data->setContent(m_payload);
+++
+++  auto randomPayloadSize = calculateRandomPayloadSize();
+++  if (randomPayloadSize != -1) {
+++    std::string content(randomPayloadSize, 'a');
+++    data->setContent(make_span(reinterpret_cast<const uint8_t*>(content.c_str()), content.size()));
+++  } else {
+++    data->setContent(m_payload);
+++  }
+++
++   m_keyChain.sign(*data, signingWithSha256());
++   m_face.put(*data);
++ 
++@@ -75,4 +84,13 @@ PingServer::onInterest(const Interest& interest)
++   }
++ }
++ 
+++int
+++PingServer::calculateRandomPayloadSize(){
+++  if (m_options.minPktSizeUniDis > 0 && m_options.maxPktSizeUniDis > 0) {
+++    std::uniform_int_distribution<int32_t> distribution(m_options.minPktSizeUniDis, m_options.maxPktSizeUniDis);
+++    return distribution(random::getRandomNumberEngine());
+++  }
+++  return -1;
+++}
+++
++ } // namespace ndn::ping::server
++diff --git a/tools/ping/server/ping-server.hpp b/tools/ping/server/ping-server.hpp
++index e9127c0..185f303 100644
++--- a/tools/ping/server/ping-server.hpp
+++++ b/tools/ping/server/ping-server.hpp
++@@ -40,6 +40,8 @@ struct Options
++   size_t payloadSize = 0;                   //!< response payload size (0 == no payload)
++   bool wantTimestamp = false;               //!< print timestamp when response sent
++   bool wantQuiet = false;                   //!< suppress printing per-packet log message
+++  int minPktSizeUniDis = -1;                //!< minimum packet size for Uniform distribution
+++  int maxPktSizeUniDis = -1;                //!< maximum packet size for Uniform distribution
++ };
++ 
++ /**
++@@ -99,6 +101,13 @@ private:
++   void
++   onInterest(const Interest& interest);
++ 
+++  /**
+++   * @brief calculate a random payload size according to the specified probability
+++   * distribution (if any). Returns -1 if no distribution was specified.
+++   */
+++  int
+++  calculateRandomPayloadSize();
+++
++ private:
++   const Options& m_options;
++   Face& m_face;
+diff --git a/wscript b/wscript
+index 87615e0..b70b97e 100644
+--- a/wscript
++++ b/wscript
+@@ -43,7 +43,7 @@ def configure(conf):
+     conf.check_cfg(package='libndn-cxx', args=['--cflags', '--libs'],
+                    uselib_store='NDN_CXX', mandatory=True)
+ 
+-    if not os.environ.has_key('PKG_CONFIG_PATH'):
++    if 'PKG_CONFIG_PATH' not in os.environ:
+         os.environ['PKG_CONFIG_PATH'] = ':'.join([
+             '/usr/local/lib/pkgconfig',
+             '/opt/local/lib/pkgconfig'])
+diff --git a/config/validation.conf b/config/validation.conf
+index 0914802..43b2dd2 100644
+--- a/config/validation.conf
++++ b/config/validation.conf
+@@ -19,7 +19,7 @@ rule
+       type name
+       hyper-relation
+       {
+-        k-regex ^([^<KEY>]*)<KEY><>$
++        k-regex ^([^<KEY>]*)<KEY><>{1,3}$
+         k-expand \\1
+         h-relation equal
+         p-regex ^<localhop><ndvr><dvinfo>(<><%C1.Router><>)<>$
+@@ -50,7 +50,7 @@ rule
+       type name
+       hyper-relation
+       {
+-        k-regex ^([^<KEY>])<KEY><>$
++        k-regex ^([^<KEY>])<KEY><>{1,3}$
+         k-expand \\1
+         h-relation equal
+         p-regex ^(<>)<%C1.Router><><KEY><><><>$
